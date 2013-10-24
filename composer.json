@@ -13,15 +13,15 @@
 	],
 	"require": {
 		"php": "~5.3",
-		"digitaledgeit/stream": "dev-master@dev",
-		"digitaledgeit/platform": "dev-master@dev"
+		"digitaledgeit/stream": "dev-master",
+		"digitaledgeit/platform": "dev-master"
 	},
 	"require-dev": {
 		"phpunit/phpunit": "~3.7"
 	},
 	"autoload": {
 		"psr-0": {
-			"deit\\stream\\": "src/"
+			"deit\\process\\": "src/"
 		}
 	}
 }
