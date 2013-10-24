@@ -1,6 +1,7 @@
 <?php
 
 namespace deit\process;
+
 use deit\stream\StreamUtil;
 use deit\stream\InputStream;
 use deit\stream\OutputStream;
@@ -10,21 +11,21 @@ use deit\platform\System as OS;
 
 /**
  * Process
- * @author 	James Newell <james@digitaledgeit.com.au>
+ * @author  James Newell <james@digitaledgeit.com.au>
  */
 class Process {
-	
-	const EXIT_SUCCESS 		= 0;
-	const EXIT_FAILURE 		= 1;
-	
-	const PIPE_STDIN 		= 0;
-	const PIPE_STDOUT 		= 1;
-	const PIPE_STDERR 		= 2;
+
+	const EXIT_SUCCESS  = 0;
+	const EXIT_FAILURE  = 1;
+
+	const PIPE_STDIN    = 0;
+	const PIPE_STDOUT   = 1;
+	const PIPE_STDERR   = 2;
 
 	/**
 	 * Executes the specified command and returns a process object without waiting for the command to finish
 	 * @param   string              $command    The command
-	 * @param   mixed[string] 	    $options    The options
+	 * @param   mixed[string]       $options    The options
 	 * @return  Process
 	 */
 	public static function spawn($command, array $options = array()) {
@@ -34,10 +35,9 @@ class Process {
 	/**
 	 * Executes the specified command, waits for it to finish and returns the exit code
 	 *  - Redirects stdout and stderr to the specified streams
-	 *
-	 * @param 	string 				$command    The command
-	 * @param   mixed[string] 	    $options    The options
-	 * @return 	int 						    The exit code
+	 * @param   string              $command    The command
+	 * @param   mixed[string]       $options    The options
+	 * @return  int                             The exit code
 	 * @throws
 	 */
 	public static function exec($command, array $options = array()) {
@@ -64,39 +64,39 @@ class Process {
 			StreamUtil::copy($spawn->getErrorStream(), $options['stderror']);
 		}
 
-		$spawn->wait();
+		$spawn->wait(); //todo: allow the user to specify a timeout option
 
 		return $spawn->getExitCode();
 	}
 
 	/**
 	 * The process resource
-	 * @var 	resource
+	 * @var     resource
 	 */
-	private $process 		= false;
-	
+	private $process = false;
+
 	/**
 	 * The process pipes
-	 * @var 	array[int]resource
+	 * @var    resource[int]
 	 */
-	private $pipes 		    = [];
-	
+	private $pipes = [];
+
 	/**
 	 * The process streams
-	 * @var 	array[int]InputStream|OutputStream
+	 * @var    InputStream[int]|OutputStream[int]
 	 */
-	private $streams 		= [];
-	
+	private $streams = [];
+
 	/**
 	 * The process exit code
-	 * @var 	int
+	 * @var    int
 	 */
-	private $exitCode 		= null;
-	
+	private $exitCode = null;
+
 	/**
 	 * Constructs the process
-	 * @param 	string 				$command    The command
-	 * @param   mixed[string] 	    $options    The options
+	 * @param   string              $command    The command
+	 * @param   mixed[string]       $options    The options
 	 * @throws
 	 */
 	private function __construct($command, array $options = array()) {
@@ -130,7 +130,7 @@ class Process {
 
 		if (isset($opt['pty']) && (bool) $opt['pty'] && !OS::isLinux()) {
 			throw new ProcessException('PTY shells are not enabled on your OS.');
-		}			
+		}
 
 		/**
 		 * Reading from a pipe opened with proc_open hangs forever on Windows
@@ -139,9 +139,9 @@ class Process {
 		if (OS::isWin()) {
 
 			$spec = array(
-				self::PIPE_STDIN 	=> array('pipe', 'r'),
-				self::PIPE_STDOUT 	=> tmpfile(),
-				self::PIPE_STDERR 	=> tmpfile()
+				self::PIPE_STDIN  => array('pipe', 'r'),
+				self::PIPE_STDOUT => tmpfile(),
+				self::PIPE_STDERR => tmpfile()
 			);
 
 		} else {
@@ -149,17 +149,17 @@ class Process {
 			if ($pty) {
 
 				$spec = array(
-					self::PIPE_STDIN 	=> array('pty'),
-					self::PIPE_STDOUT 	=> array('pty'),
-					self::PIPE_STDERR 	=> array('pty')
+					self::PIPE_STDIN  => array('pty'),
+					self::PIPE_STDOUT => array('pty'),
+					self::PIPE_STDERR => array('pty')
 				);
 
 			} else {
 
 				$spec = array(
-					self::PIPE_STDIN 	=> array('pipe', 'r'),
-					self::PIPE_STDOUT 	=> array('pipe', 'w'),
-					self::PIPE_STDERR 	=> array('pipe', 'w')
+					self::PIPE_STDIN  => array('pipe', 'r'),
+					self::PIPE_STDOUT => array('pipe', 'w'),
+					self::PIPE_STDERR => array('pipe', 'w')
 				);
 
 			}
@@ -167,7 +167,7 @@ class Process {
 		}
 
 		// --- open the process ---
-		
+
 		if (($this->process = proc_open($command, $spec, $this->pipes, $cwd, $env)) === false) {
 			throw new ProcessException('Unable to spawn process');
 		}
@@ -176,17 +176,17 @@ class Process {
 		 * See windows comment above
 		 */
 		if (OS::isWin()) {
-			$this->pipes[self::PIPE_STDOUT]	= $spec[self::PIPE_STDOUT];
-			$this->pipes[self::PIPE_STDERR]	= $spec[self::PIPE_STDERR];
+			$this->pipes[self::PIPE_STDOUT] = $spec[self::PIPE_STDOUT];
+			$this->pipes[self::PIPE_STDERR] = $spec[self::PIPE_STDERR];
 			fseek($this->pipes[self::PIPE_STDOUT], 0);
 			fseek($this->pipes[self::PIPE_STDERR], 0);
 		}
 
 	}
-	
+
 	/**
 	 * Gets whether the process is running
-	 * @return 	bool
+	 * @return    bool
 	 */
 	public function isRunning() {
 
@@ -194,32 +194,32 @@ class Process {
 		if ($this->process === false) {
 			return false;
 		}
-		
+
 		//check status returned
 		if (($status = $this->status()) === false) {
 			return false;
 		}
-		
+
 		return $status['running'];
 	}
-	
+
 	/**
 	 * Gets the process ID
-	 * @return 	int
+	 * @return    int
 	 */
 	public function getId() {
-		
+
 		//check status returned
 		if (($status = $this->status()) === false) {
 			return false;
 		}
-		
+
 		return $status['pid'];
 	}
-	
+
 	/**
 	 * Gets the process STDIN stream
-	 * @return 	OutputStream
+	 * @return    OutputStream
 	 */
 	public function getInputStream() {
 		$this->assertIsOpen();
@@ -228,10 +228,10 @@ class Process {
 		}
 		return $this->streams[self::PIPE_STDIN];
 	}
-	
+
 	/**
 	 * Gets the process STDOUT stream
-	 * @return 	InputStream
+	 * @return    InputStream
 	 */
 	public function getOutputStream() {
 		$this->assertIsOpen();
@@ -240,10 +240,10 @@ class Process {
 		}
 		return $this->streams[self::PIPE_STDOUT];
 	}
-	
+
 	/**
 	 * Gets the process STDERR stream
-	 * @return 	InputStream
+	 * @return    InputStream
 	 */
 	public function getErrorStream() {
 		$this->assertIsOpen();
@@ -252,10 +252,10 @@ class Process {
 		}
 		return $this->streams[self::PIPE_STDERR];
 	}
-	
+
 	/**
 	 * Gets the process exit code
-	 * @return 	int
+	 * @return  int
 	 * @throws
 	 */
 	public function getExitCode() {
@@ -265,17 +265,16 @@ class Process {
 
 	/**
 	 * Sends the process a POSIX signal
-	 * 
-	 * @param 	int $signal
-	 * @return 	Process
+	 * @param   int $signal
+	 * @return  Process
 	 */
 	public function signal($signal) {
 		return $this;
 	}
-	
+
 	/**
 	 * Asks the process to exit and returns immediately
-	 * @return 	Process
+	 * @return  Process
 	 * @throws
 	 */
 	public function terminate() {
@@ -290,10 +289,10 @@ class Process {
 
 		return $this;
 	}
-	
+
 	/**
 	 * Forces the process to exit and returns immediately
-	 * @return 	Process
+	 * @return  Process
 	 * @throws
 	 */
 	public function kill() {
@@ -308,11 +307,11 @@ class Process {
 
 		return $this;
 	}
-	
+
 	/**
 	 * Waits for the process to exit
-	 * @param 	float 	$timeout    The amount of seconds to wait
-	 * @return 	Process
+	 * @param   float       $timeout        The amount of seconds to wait
+	 * @return  Process
 	 */
 	public function wait($timeout = null) {
 
@@ -321,71 +320,72 @@ class Process {
 			$this->destroy();
 			return $this;
 		}
-		
+
 		if ($timeout === null) {
 			$this->destroy();
 		} else {
-			
-			$startTime 	= microtime(true);
-			$period 	= (float) $timeout < 1 ? (float) $timeout*1000000 : 0.1*1000000;
-			
-			while (microtime(true)-$startTime<$timeout) {
-				
+
+			$startTime = microtime(true);
+			$period    = (float)$timeout < 1 ? (float)$timeout * 1000000 : 0.1 * 1000000;
+
+			while (microtime(true) - $startTime < $timeout) {
+
 				usleep($period);
-				
+
 				if (!$this->isRunning()) {
 					$this->destroy();
 					break;
 				}
-				
+
 			}
-			
+
 		}
-		
+
 		return $this;
-	}	
-	
+	}
+
 	/**
 	 * Gets the process status
-	 * @return 	array[string]mixed|false
+	 * @see https://github.com/symfony/symfony/issues/5759
+	 * @see https://bugs.php.net/bug.php?id=39992
+	 * @return  mixed[string]|false
 	 */
 	private function status() {
-	
+
 		//check process is open
 		if ($this->process !== false) {
-	
+
 			//gets the process status
 			if (($status = proc_get_status($this->process)) === false) {
 				return false;
 			}
-				
+
 			//check for exit code
 			if ($status['running'] === false && $status['exitcode'] != -1) {
 				$this->exitCode = $status['exitcode'];
 			}
-				
+
 			return $status;
-				
+
 		}
-	
+
 		return false;
 	}
-	
+
 	/**
 	 * Waits for the process to close and then destroys the process resource
-	 * @return 	void
 	 * @throws
 	 */
 	private function destroy() {
 
 		// --- close the pipes ---
-		
+
 		foreach ($this->streams as $stream) {
 			if (!$stream->isClosed()) {
 				$stream->close();
 			}
 		}
-		
+
 		foreach ($this->pipes as $pipe) {
 			if (is_resource($pipe)) {
 				fclose($pipe);
@@ -393,26 +393,26 @@ class Process {
 		}
 
 		// --- close the process ---
-		
-		$isRunning 	= $this->isRunning();
-		$exitCode 	= proc_close($this->process);
-		
+
+		$isRunning = $this->isRunning();
+		$exitCode  = proc_close($this->process);
+
 		if ($isRunning && $exitCode === -1) {
 			throw new ProcessException("Unable to terminate process #{$this->getId()}");
 		}
 
 		// --- check the exit code ---
-		
+
 		if (is_null($this->exitCode) && $exitCode !== -1) {
 			$this->exitCode = $exitCode;
 		}
-		
+
 		// --- reset process class ---
-		
-		$this->process 	= false;
-		$this->pipes 		= null;
-		$this->streams		= null;
-		
+
+		$this->process = false;
+		$this->pipes   = null;
+		$this->streams = null;
+
 	}
 
 	/**
@@ -462,5 +462,5 @@ class Process {
 			$this->destroy();
 		}
 	}
-	
+
 }
