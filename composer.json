@@ -1,0 +1,27 @@
+{
+	"name":         "digitaledgeit/process",
+	"type":         "library",
+	"description":  "Library for processes",
+	"keywords":     ["process"],
+	"homepage":     "http://www.digitaledgeit.com.au",
+	"license":      "CC-BY-NC-ND-3.0",
+	"authors": [
+		{
+			"name":     "James Newell",
+			"email":    "james@digitaledgeit.com.au"
+		}
+	],
+	"require": {
+		"php": "~5.3",
+		"digitaledgeit/stream": "dev-master",
+		"digitaledgeit/platform": "dev-master"
+	},
+	"require-dev": {
+		"phpunit/phpunit": "~3.7"
+	},
+	"autoload": {
+		"psr-0": {
+			"deit\\stream\\": "src/"
+		}
+	}
+}
