@@ -3,7 +3,7 @@
         "This file locks the dependencies of your project to a known state",
         "Read more about it at http://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file"
     ],
-    "hash": "b965dda117cfbaf0132eb2d549c7bc16",
+    "hash": "0e82e428b3964424508298c141171afe",
     "packages": [
         {
             "name": "digitaledgeit/platform",
@@ -54,12 +54,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/digitaledgeit/php-stream.git",
-                "reference": "3af4ec2aa17bc3122680d4c506d5e236034615de"
+                "reference": "298ecb1827e7f70057de1d168374c6665311de46"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/digitaledgeit/php-stream/zipball/3af4ec2aa17bc3122680d4c506d5e236034615de",
-                "reference": "3af4ec2aa17bc3122680d4c506d5e236034615de",
+                "url": "https://api.github.com/repos/digitaledgeit/php-stream/zipball/298ecb1827e7f70057de1d168374c6665311de46",
+                "reference": "298ecb1827e7f70057de1d168374c6665311de46",
                 "shasum": ""
             },
             "require": {
@@ -89,7 +89,7 @@
             "keywords": [
                 "stream"
             ],
-            "time": "2013-10-24 11:51:28"
+            "time": "2013-10-24 13:14:20"
         }
     ],
     "packages-dev": [
