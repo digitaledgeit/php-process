@@ -57,11 +57,11 @@ class Process {
 			StreamUtil::copy($spawn->getOutputStream(), $options['stdout']);
 		}
 
-		if (isset($options['stderror'])) {
-			if (!$options['stderror'] instanceof OutputStream) {
+		if (isset($options['stderr'])) {
+			if (!$options['stderr'] instanceof OutputStream) {
 				throw new ProcessException("Invalid stream provided for redirecting process errors.");
 			}
-			StreamUtil::copy($spawn->getErrorStream(), $options['stderror']);
+			StreamUtil::copy($spawn->getErrorStream(), $options['stderr']);
 		}
 
 		$spawn->wait(); //todo: allow the user to specify a timeout option
