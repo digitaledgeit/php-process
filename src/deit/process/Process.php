@@ -22,6 +22,10 @@ class Process {
 	const PIPE_STDOUT   = 1;
 	const PIPE_STDERR   = 2;
 
+	const SIGINT        = 2;
+	const SIGTERM       = 15;
+	const SIGKILL       = 9;
+
 	/**
 	 * Executes the specified command and returns a process object without waiting for the command to finish
 	 * @param   string              $command    The command
@@ -265,47 +269,57 @@ class Process {
 
 	/**
 	 * Sends the process a POSIX signal
+	 *  - On Windows this function uses TerminateProcess and will ignore the signal value and terminate the process immediately, always returning an exit code of 255
+	 *      @see [TerminateProcess](http://msdn.microsoft.com/en-us/library/windows/desktop/ms686714(v=vs.85).aspx)
+	 *      @see [proc_open](https://github.com/php/php-src/blob/94e15ff3877f842e5eb5c89e3aeab214fb4a3a33/ext/standard/proc_open.c#L285)
+	 *
 	 * @param   int $signal
-	 * @return  Process
+	 * @return  $this
+	 * @throws
 	 */
 	public function signal($signal) {
+
+		if (!$this->isRunning()) {
+			return $this;
+		}
+
+		//@see https://bugs.php.net/bug.php?id=39992, http://stackoverflow.com/questions/8424961/how-to-wait-for-a-process-to-terminate-and-also-wait-for-the-corresponding-chil
+		// fixme: function doesn't exist on windows
+		//posix_setpgid($this->getId(), $this->getId());
+		//posix_kill($this->getId(), $signal);
+
+		if (!proc_terminate($this->process, $signal)) { //TODO: only works on *nix???, may have a bug https://bugs.php.net/bug.php?id=39992,
+			throw new ProcessException("Unable to kill process #{$this->getId()}");
+		}
+
 		return $this;
 	}
 
 	/**
 	 * Asks the process to exit and returns immediately
-	 * @return  Process
-	 * @throws
+	 * @see     Process:signal($signal)
+	 * @return  $this
+	 */
+	public function interrupt() {
+		return $this->signal(self::SIGINT);
+	}
+
+	/**
+	 * Asks the process to exit and returns immediately
+	 * @see     Process:signal($signal)
+	 * @return  $this
 	 */
 	public function terminate() {
-
-		if (!$this->isRunning()) {
-			return $this;
-		}
-
-		if (!proc_terminate($this->process)) {
-			throw new ProcessException("Unable to terminate process #{$this->getId()}");
-		}
-
-		return $this;
+		return $this->signal(self::SIGTERM);
 	}
 
 	/**
 	 * Forces the process to exit and returns immediately
-	 * @return  Process
-	 * @throws
+	 * @see     Process:signal($signal)
+	 * @return  $this
 	 */
 	public function kill() {
-
-		if (!$this->isRunning()) {
-			return $this;
-		}
-
-		if (!proc_terminate($this->process, 9)) { //TODO: only works on *nix
-			throw new ProcessException("Unable to kill process #{$this->getId()}");
-		}
-
-		return $this;
+		return $this->signal(self::SIGKILL);
 	}
 
 	/**
