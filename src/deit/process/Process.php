@@ -50,25 +50,30 @@ class Process {
 
 		//TODO: use stream_select() to prevent deadlocks
 
-		if (isset($options['stdin'])) {
-			if (!$options['stdin'] instanceof InputStream) {
-				throw new ProcessException("Invalid stream provided for redirecting process input.");
-			}
-			StreamUtil::copy($options['stdin'], $spawn->getInputStream());
-		}
+		while ($spawn->isRunning()) {
 
-		if (isset($options['stdout'])) {
-			if (!$options['stdout'] instanceof OutputStream) {
-				throw new ProcessException("Invalid stream provided for redirecting process output.");
+			if (isset($options['stdin'])) {
+				if (!$options['stdin'] instanceof InputStream) {
+					throw new ProcessException("Invalid stream provided for redirecting process input.");
+				}
+				$spawn->getInputStream()->write($options['stdin']->read(1024));
 			}
-			StreamUtil::copy($spawn->getOutputStream(), $options['stdout']);
-		}
 
-		if (isset($options['stderr'])) {
-			if (!$options['stderr'] instanceof OutputStream) {
-				throw new ProcessException("Invalid stream provided for redirecting process errors.");
+			if (isset($options['stdout'])) {
+				if (!$options['stdout'] instanceof OutputStream) {
+					throw new ProcessException("Invalid stream provided for redirecting process output.");
+				}
+				$options['stdout']->write($spawn->getOutputStream()->read(1024));
 			}
-			StreamUtil::copy($spawn->getErrorStream(), $options['stderr']);
+
+			if (isset($options['stderr'])) {
+				if (!$options['stderr'] instanceof OutputStream) {
+					throw new ProcessException("Invalid stream provided for redirecting process errors.");
+				}
+				$options['stderr']->write($spawn->getErrorStream()->read(1024));
+			}
+
+			usleep(10);
 		}
 
 		$spawn->wait(); //todo: allow the user to specify a timeout option
