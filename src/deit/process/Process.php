@@ -1,13 +1,14 @@
 <?php
 
 namespace deit\process;
-
+use deit\platform\System as OS;
 use deit\stream\StreamUtil;
+use deit\stream\Closeable;
 use deit\stream\InputStream;
 use deit\stream\OutputStream;
 use deit\stream\PhpInputStream;
 use deit\stream\PhpOutputStream;
-use deit\platform\System as OS;
+use deit\stream\RewindBeforeReadInputStream;
 
 /**
  * Process
@@ -46,6 +47,8 @@ class Process {
 	 */
 	public static function exec($command, array $options = array()) {
 		$spawn = self::spawn($command, $options);
+
+		//TODO: use stream_select() to prevent deadlocks
 
 		if (isset($options['stdin'])) {
 			if (!$options['stdin'] instanceof InputStream) {
@@ -182,8 +185,6 @@ class Process {
 		if (OS::isWin()) {
 			$this->pipes[self::PIPE_STDOUT] = $spec[self::PIPE_STDOUT];
 			$this->pipes[self::PIPE_STDERR] = $spec[self::PIPE_STDERR];
-			fseek($this->pipes[self::PIPE_STDOUT], 0);
-			fseek($this->pipes[self::PIPE_STDERR], 0);
 		}
 
 	}
@@ -241,6 +242,9 @@ class Process {
 		$this->assertIsOpen();
 		if (!isset($this->streams[self::PIPE_STDOUT])) {
 			$this->streams[self::PIPE_STDOUT] = new PhpInputStream($this->pipes[self::PIPE_STDOUT], false);
+			if (OS::isWin()) {
+				$this->streams[self::PIPE_STDOUT] = new RewindBeforeReadInputStream($this->streams[self::PIPE_STDOUT]);
+			}
 		}
 		return $this->streams[self::PIPE_STDOUT];
 	}
@@ -253,6 +257,9 @@ class Process {
 		$this->assertIsOpen();
 		if (!isset($this->streams[self::PIPE_STDERR])) {
 			$this->streams[self::PIPE_STDERR] = new PhpInputStream($this->pipes[self::PIPE_STDERR], false);
+			if (OS::isWin()) {
+				$this->streams[self::PIPE_STDERR] = new RewindBeforeReadInputStream($this->streams[self::PIPE_STDERR]);
+			}
 		}
 		return $this->streams[self::PIPE_STDERR];
 	}
@@ -395,7 +402,7 @@ class Process {
 		// --- close the pipes ---
 
 		foreach ($this->streams as $stream) {
-			if (!$stream->isClosed()) {
+			if ($stream instanceof Closable && !$stream->isClosed()) {
 				$stream->close();
 			}
 		}

@@ -3,7 +3,7 @@
         "This file locks the dependencies of your project to a known state",
         "Read more about it at http://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file"
     ],
-    "hash": "0e82e428b3964424508298c141171afe",
+    "hash": "3ede5a759581e1df08a76ec5524959b3",
     "packages": [
         {
             "name": "digitaledgeit/platform",
@@ -54,12 +54,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/digitaledgeit/php-stream.git",
-                "reference": "298ecb1827e7f70057de1d168374c6665311de46"
+                "reference": "d47a1afaff0039f9851d9ac8f9c42aca79489050"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/digitaledgeit/php-stream/zipball/298ecb1827e7f70057de1d168374c6665311de46",
-                "reference": "298ecb1827e7f70057de1d168374c6665311de46",
+                "url": "https://api.github.com/repos/digitaledgeit/php-stream/zipball/d47a1afaff0039f9851d9ac8f9c42aca79489050",
+                "reference": "d47a1afaff0039f9851d9ac8f9c42aca79489050",
                 "shasum": ""
             },
             "require": {
@@ -89,7 +89,7 @@
             "keywords": [
                 "stream"
             ],
-            "time": "2013-10-24 13:14:20"
+            "time": "2013-11-26 00:32:42"
         }
     ],
     "packages-dev": [
@@ -462,17 +462,17 @@
         },
         {
             "name": "symfony/yaml",
-            "version": "v2.3.6",
+            "version": "v2.3.7",
             "target-dir": "Symfony/Component/Yaml",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/Yaml.git",
-                "reference": "6bb881b948368482e1abf1a75c08bcf88a1c5fc3"
+                "reference": "c1bda5b459d792cb253de12c65beba3040163b2b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/Yaml/zipball/6bb881b948368482e1abf1a75c08bcf88a1c5fc3",
-                "reference": "6bb881b948368482e1abf1a75c08bcf88a1c5fc3",
+                "url": "https://api.github.com/repos/symfony/Yaml/zipball/c1bda5b459d792cb253de12c65beba3040163b2b",
+                "reference": "c1bda5b459d792cb253de12c65beba3040163b2b",
                 "shasum": ""
             },
             "require": {
@@ -505,7 +505,7 @@
             ],
             "description": "Symfony Yaml Component",
             "homepage": "http://symfony.com",
-            "time": "2013-09-22 18:04:39"
+            "time": "2013-10-17 11:48:01"
         }
     ],
     "aliases": [
