@@ -96,6 +96,7 @@ class Process {
 
 			do {
 
+				//todo: create a custom stream so users don't have to take this logic into account
 				if ($stdout) {
 					while (!$spawn->getOutputStream()->end() || $spawn->isRunning()) {
 						$options['stdout']->write($spawn->getOutputStream()->read(1024));
