@@ -85,32 +85,45 @@ class Process {
 			$stderr = true;
 		}
 
-		while (($stdin || $stdout || $stderr)) { //todo: allow the user to specify a timeout option
-
-			if ($stdin) {
-				if ($spawn->getInputStream()->end() || $options['stdin']->end()) {
-					$stdin = false;
-					$spawn->getInputStream()->close();
-				} else {
-					$spawn->getInputStream()->write($options['stdin']->read(1024));
-				}
+		if ($stdin) {
+			while (!$spawn->getInputStream()->end()) {
+				$spawn->getInputStream()->write($options['stdin']->read(1024));
 			}
+			$spawn->getInputStream()->close();
+		}
 
-			if ($stdout) {
-				if ($spawn->getOutputStream()->end()) {
-					$stdout = false;
-				} else {
-					$options['stdout']->write($spawn->getOutputStream()->read(1024));
+		if (OS::isWin()) {
+
+			do {
+
+				if ($stdout) {
+					while (!$spawn->getOutputStream()->end() || $spawn->isRunning()) {
+						$options['stdout']->write($spawn->getOutputStream()->read(1024));
+					}
 				}
-			}
 
-			if ($stderr) {
-				if ($spawn->getErrorStream()->end()) {
-					$stderr = false;
-				} else {
+				if ($stderr) {
 					$options['stderr']->write($spawn->getErrorStream()->read(1024));
 				}
-			}
+
+				//todo: do we need to sleep?
+
+			} while (!$spawn->getOutputStream()->end() && $spawn->getErrorStream()->end());
+
+		} else {
+
+			//todo: should probably use stream_select
+			do {
+
+				if ($stdout) {
+					$options['stdout']->write($spawn->getOutputStream()->read(1024));
+				}
+
+				if ($stderr) {
+					$options['stderr']->write($spawn->getErrorStream()->read(1024));
+				}
+
+			} while (!$spawn->getOutputStream()->end() || !$spawn->getErrorStream()->end());
 
 		}
 
