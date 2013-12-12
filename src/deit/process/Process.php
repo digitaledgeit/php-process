@@ -48,10 +48,6 @@ class Process {
 	public static function exec($command, array $options = array()) {
 		$spawn = self::spawn($command, $options);
 
-		$stdin  = false;
-		$stdout = false;
-		$stderr = false;
-
 		//check the argument is a stream
 		if (isset($options['stdin'])) {
 
@@ -60,47 +56,70 @@ class Process {
 				throw new ProcessException("Invalid stream provided for redirecting process input.");
 			}
 
-			$stdin = true;
+			//write to stdin
+			while (!$spawn->getInputStream()->end()) {
+				$spawn->getInputStream()->write($options['stdin']->read(1024));
+			}
+			$spawn->getInputStream()->close();
+
 		}
 
 		//check the argument is a stream
 		if (isset($options['stdout'])) {
 
 			//check the redirect stream is valid
-			if (!$options['stdout'] instanceof OutputStream) {
-				throw new ProcessException("Invalid stream provided for redirecting process output.");
+			if (!$options['stdout'] instanceof OutputStream && !is_callable($options['stdout'])) {
+				throw new ProcessException("Invalid output stream or callback provided.");
 			}
 
-			$stdout = true;
 		}
 
 		//check the argument is a stream
 		if (isset($options['stderr'])) {
 
 			//check the redirect stream is valid
-			if (!$options['stderr'] instanceof OutputStream) {
-				throw new ProcessException("Invalid stream provided for redirecting process error.");
+			if (!$options['stderr'] instanceof OutputStream && !is_callable($options['stderr'])) {
+				throw new ProcessException("Invalid error stream or callback provided.");
 			}
 
-			$stderr = true;
-		}
-
-		if ($stdin) {
-			while (!$spawn->getInputStream()->end()) {
-				$spawn->getInputStream()->write($options['stdin']->read(1024));
-			}
-			$spawn->getInputStream()->close();
 		}
 
 		do {
 
-			if ($stdout) {
-				$options['stdout']->write($spawn->getOutputStream()->read(1024));
+			if (isset($options['stdout'])) {
+
+				//fetch some data
+				$buffer = $spawn->getOutputStream()->read(1024);
+
+				//write to the stream or call the function
+				if (!empty($buffer)) {
+					if ($options['stderr'] instanceof OutputStream) {
+						$options['stdout']->write($buffer);
+					} else {
+						call_user_func($options['stdout'], $buffer);
+					}
+				}
+
 			}
 
-			if ($stderr) {
-				$options['stderr']->write($spawn->getErrorStream()->read(1024));
+			if (isset($options['stderr'])) {
+
+				//fetch some data
+				$buffer = $spawn->getErrorStream()->read(1024);
+
+				//write to the stream or call the function
+				if (!empty($buffer)) {
+					if ($options['stderr'] instanceof OutputStream) {
+						$options['stderr']->write($buffer);
+					} else {
+						echo 'function';
+						call_user_func($options['stderr'], $buffer);
+					}
+				}
+
 			}
+
+			//todo: allow the user to specify a timeout option
 
 		} while (!$spawn->getOutputStream()->end() || !$spawn->getErrorStream()->end());
 
