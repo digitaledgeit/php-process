@@ -53,5 +53,7 @@ class ProcessTest extends \PHPUnit_Framework_TestCase {
 
 	}
 
+	//TODO: test when the stdout takes a little while to generate and the error stream is empty
+
 }
  
