@@ -182,7 +182,6 @@ class Process {
 			'binary_pipes'      => false,
 			'bypass_shell'      => false,
 		);
-		//$options = null;
 
 		// --- setup process pipes ---
 
