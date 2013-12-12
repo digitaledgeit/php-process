@@ -90,7 +90,7 @@ class Process {
 
 		} else {
 
-			//set default output stream
+			//set default error stream
 			$options['stderr'] = new NullOutputStream();
 
 		}
