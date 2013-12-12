@@ -1,6 +1,7 @@
 <?php
 
 namespace deit\process;
+use deit\stream\Closeable;
 use deit\stream\InputStream;
 use deit\stream\PhpInputStream;
 use deit\stream\RewindBeforeReadInputStream;
@@ -9,7 +10,7 @@ use deit\stream\RewindBeforeReadInputStream;
  * Process input stream - Process input stream for Windows
  * @author James Newell <james@digitaledgeit.com.au>
  */
-class ProcessInputStream implements InputStream {
+class ProcessInputStream implements InputStream, Closeable {
 
 	/**
 	 * The stream
@@ -45,6 +46,20 @@ class ProcessInputStream implements InputStream {
 	 */
 	public function read($count) {
 		return $this->stream->read($count);
+	}
+
+	/**
+	 * @inheritdoc
+	 */
+	public function isClosed() {
+		return $this->stream->isClosed();
+	}
+
+	/**
+	 * @inheritdoc
+	 */
+	public function close() {
+		return $this->stream->close();
 	}
 
 }
