@@ -48,32 +48,70 @@ class Process {
 	public static function exec($command, array $options = array()) {
 		$spawn = self::spawn($command, $options);
 
-		//TODO: use stream_select() to prevent deadlocks
+		$stdin  = false;
+		$stdout = false;
+		$stderr = false;
 
-		while ($spawn->isRunning()) {
+		//check the argument is a stream
+		if (isset($options['stdin'])) {
 
-			if (isset($options['stdin'])) {
-				if (!$options['stdin'] instanceof InputStream) {
-					throw new ProcessException("Invalid stream provided for redirecting process input.");
-				}
-				$spawn->getInputStream()->write($options['stdin']->read(1024));
+			//check the redirect stream is valid
+			if (!$options['stdin'] instanceof InputStream) {
+				throw new ProcessException("Invalid stream provided for redirecting process input.");
 			}
 
-			if (isset($options['stdout'])) {
-				if (!$options['stdout'] instanceof OutputStream) {
-					throw new ProcessException("Invalid stream provided for redirecting process output.");
-				}
-				$options['stdout']->write($spawn->getOutputStream()->read(1024));
+			$stdin = true;
+		}
+
+		//check the argument is a stream
+		if (isset($options['stdout'])) {
+
+			//check the redirect stream is valid
+			if (!$options['stdout'] instanceof OutputStream) {
+				throw new ProcessException("Invalid stream provided for redirecting process output.");
 			}
 
-			if (isset($options['stderr'])) {
-				if (!$options['stderr'] instanceof OutputStream) {
-					throw new ProcessException("Invalid stream provided for redirecting process errors.");
-				}
-				$options['stderr']->write($spawn->getErrorStream()->read(1024));
+			$stdout = true;
+		}
+
+		//check the argument is a stream
+		if (isset($options['stderr'])) {
+
+			//check the redirect stream is valid
+			if (!$options['stderr'] instanceof OutputStream) {
+				throw new ProcessException("Invalid stream provided for redirecting process error.");
 			}
 
-			usleep(10);
+			$stderr = true;
+		}
+
+		while (($stdin || $stdout || $stderr)) { //todo: allow the user to specify a timeout option
+
+			if ($stdin) {
+				if ($spawn->getInputStream()->end() || $options['stdin']->end()) {
+					$stdin = false;
+					$spawn->getInputStream()->close();
+				} else {
+					$spawn->getInputStream()->write($options['stdin']->read(1024));
+				}
+			}
+
+			if ($stdout) {
+				if ($spawn->getOutputStream()->end()) {
+					$stdout = false;
+				} else {
+					$options['stdout']->write($spawn->getOutputStream()->read(1024));
+				}
+			}
+
+			if ($stderr) {
+				if ($spawn->getErrorStream()->end()) {
+					$stderr = false;
+				} else {
+					$options['stderr']->write($spawn->getErrorStream()->read(1024));
+				}
+			}
+
 		}
 
 		$spawn->wait(); //todo: allow the user to specify a timeout option
@@ -127,6 +165,7 @@ class Process {
 		}
 
 		if (isset($options['env'])) {
+			//todo: values can't be arrays
 			$env = (array) $options['env'];
 		} else {
 			$env = null;
@@ -138,6 +177,13 @@ class Process {
 			$pty = false;
 		}
 
+		$options = array(
+			'suppress_errors'   => false,
+			'binary_pipes'      => false,
+			'bypass_shell'      => false,
+		);
+		//$options = null;
+
 		// --- setup process pipes ---
 
 		if (isset($opt['pty']) && (bool) $opt['pty'] && !OS::isLinux()) {
@@ -147,13 +193,15 @@ class Process {
 		/**
 		 * Reading from a pipe opened with proc_open hangs forever on Windows
 		 * @see https://bugs.php.net/bug.php?id=51800
+		 * @see https://bugs.php.net/bug.php?id=65650
+		 * @see https://bugs.php.net/bug.php?id=44908
 		 */
 		if (OS::isWin()) {
 
 			$spec = array(
 				self::PIPE_STDIN  => array('pipe', 'r'),
 				self::PIPE_STDOUT => tmpfile(),
-				self::PIPE_STDERR => tmpfile()
+				self::PIPE_STDERR => array('pipe', 'w'),
 			);
 
 		} else {
@@ -163,7 +211,7 @@ class Process {
 				$spec = array(
 					self::PIPE_STDIN  => array('pty'),
 					self::PIPE_STDOUT => array('pty'),
-					self::PIPE_STDERR => array('pty')
+					self::PIPE_STDERR => array('pty'),
 				);
 
 			} else {
@@ -171,7 +219,7 @@ class Process {
 				$spec = array(
 					self::PIPE_STDIN  => array('pipe', 'r'),
 					self::PIPE_STDOUT => array('pipe', 'w'),
-					self::PIPE_STDERR => array('pipe', 'w')
+					self::PIPE_STDERR => array('pipe', 'w'),
 				);
 
 			}
@@ -180,7 +228,7 @@ class Process {
 
 		// --- open the process ---
 
-		if (($this->process = proc_open($command, $spec, $this->pipes, $cwd, $env)) === false) {
+		if (($this->process = proc_open($command, $spec, $this->pipes, $cwd, $env, $options)) === false) {
 			throw new ProcessException('Unable to spawn process');
 		}
 
@@ -189,7 +237,6 @@ class Process {
 		 */
 		if (OS::isWin()) {
 			$this->pipes[self::PIPE_STDOUT] = $spec[self::PIPE_STDOUT];
-			$this->pipes[self::PIPE_STDERR] = $spec[self::PIPE_STDERR];
 		}
 
 	}
@@ -262,9 +309,6 @@ class Process {
 		$this->assertIsOpen();
 		if (!isset($this->streams[self::PIPE_STDERR])) {
 			$this->streams[self::PIPE_STDERR] = new PhpInputStream($this->pipes[self::PIPE_STDERR], false);
-			if (OS::isWin()) {
-				$this->streams[self::PIPE_STDERR] = new RewindBeforeReadInputStream($this->streams[self::PIPE_STDERR]);
-			}
 		}
 		return $this->streams[self::PIPE_STDERR];
 	}
@@ -343,12 +387,12 @@ class Process {
 
 		//check the process is running
 		if (!$this->isRunning()) {
-			$this->destroy();
+			$this->cleanup();
 			return $this;
 		}
 
 		if ($timeout === null) {
-			$this->destroy();
+			$this->cleanup();
 		} else {
 
 			$startTime = microtime(true);
@@ -359,7 +403,7 @@ class Process {
 				usleep($period);
 
 				if (!$this->isRunning()) {
-					$this->destroy();
+					$this->cleanup();
 					break;
 				}
 
@@ -399,10 +443,10 @@ class Process {
 	}
 
 	/**
-	 * Waits for the process to close and then destroys the process resource
+	 * Waits for the process to close and then cleans up the process resource
 	 * @throws
 	 */
-	private function destroy() {
+	private function cleanup() {
 
 		// --- close the pipes ---
 
@@ -485,7 +529,7 @@ class Process {
 			if ($this->isRunning()) {
 				$this->kill();
 			}
-			$this->destroy();
+			$this->cleanup();
 		}
 	}
 
