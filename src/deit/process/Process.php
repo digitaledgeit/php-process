@@ -8,7 +8,8 @@ use deit\stream\InputStream;
 use deit\stream\OutputStream;
 use deit\stream\PhpInputStream;
 use deit\stream\PhpOutputStream;
-use deit\stream\RewindBeforeReadInputStream;
+use deit\stream\NullInputStream;
+use deit\stream\NullOutputStream;
 
 /**
  * Process
@@ -46,6 +47,17 @@ class Process {
 	 * @throws
 	 */
 	public static function exec($command, array $options = array()) {
+
+		//set default output stream
+		if (!isset($options['stdout'])) {
+			$options['stdout'] = new NullOutputStream();
+		}
+
+		//set default output stream
+		if (!isset($options['stderr'])) {
+			$options['stderr'] = new NullOutputStream();
+		}
+
 		$spawn = self::spawn($command, $options);
 
 		//check the argument is a stream
@@ -86,37 +98,28 @@ class Process {
 
 		do {
 
-			if (isset($options['stdout'])) {
+			//fetch stdout data
+			$buffer = $spawn->getOutputStream()->read(1024);
 
-				//fetch some data
-				$buffer = $spawn->getOutputStream()->read(1024);
-
-				//write to the stream or call the function
-				if (!empty($buffer)) {
-					if ($options['stderr'] instanceof OutputStream) {
-						$options['stdout']->write($buffer);
-					} else {
-						call_user_func($options['stdout'], $buffer);
-					}
+			//write to the stream or call the function
+			if (!empty($buffer)) {
+				if ($options['stdout'] instanceof OutputStream) {
+					$options['stdout']->write($buffer);
+				} else {
+					call_user_func($options['stdout'], $buffer);
 				}
-
 			}
 
-			if (isset($options['stderr'])) {
+			//fetch stderr data
+			$buffer = $spawn->getErrorStream()->read(1024);
 
-				//fetch some data
-				$buffer = $spawn->getErrorStream()->read(1024);
-
-				//write to the stream or call the function
-				if (!empty($buffer)) {
-					if ($options['stderr'] instanceof OutputStream) {
-						$options['stderr']->write($buffer);
-					} else {
-						echo 'function';
-						call_user_func($options['stderr'], $buffer);
-					}
+			//write to the stream or call the function
+			if (!empty($buffer)) {
+				if ($options['stderr'] instanceof OutputStream) {
+					$options['stderr']->write($buffer);
+				} else {
+					call_user_func($options['stderr'], $buffer);
 				}
-
 			}
 
 			//todo: allow the user to specify a timeout option
