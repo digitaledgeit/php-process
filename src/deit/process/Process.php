@@ -92,41 +92,17 @@ class Process {
 			$spawn->getInputStream()->close();
 		}
 
-		if (OS::isWin()) {
+		do {
 
-			do {
+			if ($stdout) {
+				$options['stdout']->write($spawn->getOutputStream()->read(1024));
+			}
 
-				//todo: create a custom stream so users don't have to take this logic into account
-				if ($stdout) {
-					while (!$spawn->getOutputStream()->end() || $spawn->isRunning()) {
-						$options['stdout']->write($spawn->getOutputStream()->read(1024));
-					}
-				}
+			if ($stderr) {
+				$options['stderr']->write($spawn->getErrorStream()->read(1024));
+			}
 
-				if ($stderr) {
-					$options['stderr']->write($spawn->getErrorStream()->read(1024));
-				}
-
-				//todo: do we need to sleep?
-
-			} while (!$spawn->getOutputStream()->end() && $spawn->getErrorStream()->end());
-
-		} else {
-
-			//todo: should probably use stream_select
-			do {
-
-				if ($stdout) {
-					$options['stdout']->write($spawn->getOutputStream()->read(1024));
-				}
-
-				if ($stderr) {
-					$options['stderr']->write($spawn->getErrorStream()->read(1024));
-				}
-
-			} while (!$spawn->getOutputStream()->end() || !$spawn->getErrorStream()->end());
-
-		}
+		} while (!$spawn->getOutputStream()->end() || !$spawn->getErrorStream()->end());
 
 		$spawn->wait(); //todo: allow the user to specify a timeout option
 
@@ -308,7 +284,7 @@ class Process {
 		if (!isset($this->streams[self::PIPE_STDOUT])) {
 			$this->streams[self::PIPE_STDOUT] = new PhpInputStream($this->pipes[self::PIPE_STDOUT], false);
 			if (OS::isWin()) {
-				$this->streams[self::PIPE_STDOUT] = new RewindBeforeReadInputStream($this->streams[self::PIPE_STDOUT]);
+				$this->streams[self::PIPE_STDOUT] = new ProcessInputStream($this->streams[self::PIPE_STDOUT], $this);
 			}
 		}
 		return $this->streams[self::PIPE_STDOUT];
