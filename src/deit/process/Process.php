@@ -10,6 +10,7 @@ use deit\stream\PhpInputStream;
 use deit\stream\PhpOutputStream;
 use deit\stream\NullInputStream;
 use deit\stream\NullOutputStream;
+use deit\stream\RewindBeforeReadInputStream;
 
 /**
  * Process
@@ -97,48 +98,44 @@ class Process {
 
 		do {
 
-			//fetch all stdout data before the process ends
-			while (!$spawn->getOutputStream()->end()) {
-
-				//fetch stdout data
-				$buffer = $spawn->getOutputStream()->read(1024);
-
-				//write to the stream or call the function
-				if (!empty($buffer)) {
-					if ($options['stdout'] instanceof OutputStream) {
-						$options['stdout']->write($buffer);
-					} else {
-						call_user_func($options['stdout'], $buffer);
-					}
-				}
-
-			}
-
-			//fetch all stderr data before the process ends
-			while (!$spawn->getErrorStream()->end()) {
-
-				//fetch stderr data
-				$buffer = $spawn->getErrorStream()->read(1024);
-
-				//write to the stream or call the function
-				if (!empty($buffer)) {
-					if ($options['stderr'] instanceof OutputStream) {
-						$options['stderr']->write($buffer);
-					} else {
-						call_user_func($options['stderr'], $buffer);
-					}
-				}
-
-			}
+			//fetch all stdout and stderr data before the process ends
+			self::pipeStream($spawn->getOutputStream(), $options['stdout']);
+			self::pipeStream($spawn->getErrorStream(), $options['stderr']);
 
 			//todo: allow the user to specify a timeout option
 
 		} while ($spawn->isRunning() || !$spawn->getOutputStream()->end() || !$spawn->getErrorStream()->end());
 
+		//fetch all stdout and stderr data after the process ends
+		self::pipeStream($spawn->getOutputStream(), $options['stdout']);
+		self::pipeStream($spawn->getErrorStream(), $options['stderr']);
 
 		$spawn->wait(); //todo: allow the user to specify a timeout option
 
 		return $spawn->getExitCode();
+	}
+
+	/**
+	 * Pipes input from the stream to the callback
+	 * @param InputStream               $in
+	 * @param OutputStream|callable     $out
+	 */
+	static private function pipeStream($in, $out) {
+		do {
+
+			//fetch stderr data
+			$buffer = $in->read(1024);
+
+			//write to the stream or call the function
+			if (!empty($buffer)) {
+				if ($out instanceof OutputStream) {
+					$out->write($buffer);
+				} else {
+					call_user_func($out, $buffer);
+				}
+			}
+
+		}while (!$in->end()) ;
 	}
 
 	/**
@@ -316,7 +313,7 @@ class Process {
 		if (!isset($this->streams[self::PIPE_STDOUT])) {
 			$this->streams[self::PIPE_STDOUT] = new PhpInputStream($this->pipes[self::PIPE_STDOUT], false);
 			if (OS::isWin()) {
-				$this->streams[self::PIPE_STDOUT] = new ProcessInputStream($this->streams[self::PIPE_STDOUT], $this);
+				$this->streams[self::PIPE_STDOUT] = new RewindBeforeReadInputStream($this->streams[self::PIPE_STDOUT]);
 			}
 		}
 		return $this->streams[self::PIPE_STDOUT];
