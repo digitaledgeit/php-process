@@ -199,7 +199,7 @@ class Process {
 		$options = array(
 			'suppress_errors'   => false,
 			'binary_pipes'      => false,
-			'bypass_shell'      => false,
+			'bypass_shell'      => true,
 		);
 
 		// --- setup process pipes ---
