@@ -13,8 +13,8 @@
 	],
 	"require": {
 		"php": "~5.3",
-		"digitaledgeit/stream": "dev-master",
-		"digitaledgeit/platform": "dev-master"
+		"digitaledgeit/stream": "~0.1.0",
+		"digitaledgeit/platform": "~0.1.0"
 	},
 	"require-dev": {
 		"phpunit/phpunit": "~3.7"
