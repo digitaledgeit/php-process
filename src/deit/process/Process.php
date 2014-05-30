@@ -11,6 +11,7 @@ use deit\stream\PhpOutputStream;
 use deit\stream\NullInputStream;
 use deit\stream\NullOutputStream;
 use deit\stream\RewindBeforeReadInputStream;
+use deit\stream\StreamWatcher;
 
 /**
  * Process
@@ -96,19 +97,42 @@ class Process {
 
 		}
 
-		do {
+		$watcher = new StreamWatcher();
+		$watcher
+			->register($spawn->getOutputStream(), StreamWatcher::OP_READ, self::PIPE_STDOUT)
+			->register($spawn->getErrorStream(), StreamWatcher::OP_READ, self::PIPE_STDERR)
+		;
 
-			//fetch all stdout and stderr data before the process ends
-			self::pipeStream($spawn->getOutputStream(), $options['stdout']);
-			self::pipeStream($spawn->getErrorStream(), $options['stderr']);
+		while($watcher->count()) {
 
-			//todo: allow the user to specify a timeout option
+			$changed = $watcher->watch(1);
 
-		} while ($spawn->isRunning() || !$spawn->getOutputStream()->end() || !$spawn->getErrorStream()->end());
+			foreach ($changed as $status) {
+				$stream = $status->getStream();
 
-		//fetch all stdout and stderr data after the process ends
-		self::pipeStream($spawn->getOutputStream(), $options['stdout']);
-		self::pipeStream($spawn->getErrorStream(), $options['stderr']);
+				if ($status->getContext() === self::PIPE_STDOUT) {
+					if (is_callable($options['stderr'])) {
+						call_user_func($options['stdout'], $stream->read(1024));
+					} else {
+						$options['stdout']->write($stream->read(1024));
+					}
+				}
+
+				if ($status->getContext() === self::PIPE_STDERR) {
+					if (is_callable($options['stderr'])) {
+						call_user_func($options['stderr'], $stream->read(1024));
+					} else {
+						$options['stderr']->write($stream->read(1024));
+					}
+				}
+
+				if ($stream->end()) {
+					$watcher->remove($status);
+				}
+
+			}
+
+		}
 
 		$spawn->wait(); //todo: allow the user to specify a timeout option
 

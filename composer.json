@@ -13,7 +13,7 @@
 	],
 	"require": {
 		"php": "~5.3",
-		"digitaledgeit/stream": "~0.1.0",
+		"digitaledgeit/stream": "~0.1.3",
 		"digitaledgeit/platform": "~0.1.0"
 	},
 	"require-dev": {

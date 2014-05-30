@@ -53,6 +53,37 @@ class ProcessTest extends \PHPUnit_Framework_TestCase {
 
 	}
 
+	public function test_event() {
+
+		$stdout = '';
+		$stderr = '';
+
+		$exitCode = Process::exec(
+			'ping -c 5 google.com',
+			[
+				'stdout' => function($val) use(&$stdout) {
+					$stdout .= $val;
+				},
+				'stderr' => function($val) use(&$stderr) {
+					$stderr .= $val;
+				},
+			]
+		);
+
+		$this->assertEquals(
+		     "PING google.com",
+			 substr($stdout, 0, 15)
+		);
+
+		$this->assertEquals(
+		     "",
+			 (string) $stderr
+		);
+
+		$this->assertEquals(0, $exitCode);
+
+	}
+
 	//TODO: test when the stdout takes a little while to generate and the error stream is empty
 
 }
