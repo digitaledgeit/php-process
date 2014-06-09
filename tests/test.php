@@ -11,6 +11,8 @@ if (System::isWin()) {
 	$cmd = 'ping -c 4 10.0.0.1';
 }
 
+$cmd = escapeshellarg('e:\\tmp\\test folder\\node_modules\\.bin\component.cmd');
+
 $exitCode = Process::exec($cmd, [
 	'stdout' => function($data) {
 		echo 'OUT: '.$data.PHP_EOL;
