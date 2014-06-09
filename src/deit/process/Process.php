@@ -59,7 +59,7 @@ class Process {
 				throw new ProcessException("Invalid stream provided for redirecting process input.");
 			}
 
-			//write to stdin
+			//pipe the input to stdin
 			while (!$spawn->getInputStream()->end()) {
 				$spawn->getInputStream()->write($options['stdin']->read(1024));
 			}
@@ -97,69 +97,63 @@ class Process {
 
 		}
 
+		//TODO: allow the user to specify a timeout option to stop the process after X amount of time
+
 		$watcher = new StreamWatcher();
 		$watcher
 			->register($spawn->getOutputStream(), StreamWatcher::OP_READ, self::PIPE_STDOUT)
 			->register($spawn->getErrorStream(), StreamWatcher::OP_READ, self::PIPE_STDERR)
 		;
 
-		while($watcher->count()) {
+		do {
 
-			$changed = $watcher->watch(1);
+			$changed = $watcher->watch(0.1);
 
 			foreach ($changed as $status) {
 				$stream = $status->getStream();
 
+				//read stdout stream
 				if ($status->getContext() === self::PIPE_STDOUT) {
-					if (is_callable($options['stderr'])) {
-						call_user_func($options['stdout'], $stream->read(1024));
-					} else {
-						$options['stdout']->write($stream->read(1024));
-					}
+					self::read($stream, $options['stdout']);
 				}
 
+				//read stderr stream
 				if ($status->getContext() === self::PIPE_STDERR) {
-					if (is_callable($options['stderr'])) {
-						call_user_func($options['stderr'], $stream->read(1024));
-					} else {
-						$options['stderr']->write($stream->read(1024));
-					}
-				}
-
-				if ($stream->end()) {
-					$watcher->remove($status);
+					self::read($stream, $options['stderr']);
 				}
 
 			}
 
-		}
+		} while ($spawn->isRunning() || !$spawn->getOutputStream()->end() || !$spawn->getErrorStream()->end());
 
-		$spawn->wait(); //todo: allow the user to specify a timeout option
+		//note: required for Windows
+		self::read($spawn->getOutputStream(), $options['stdout']);
+		self::read($spawn->getErrorStream(), $options['stderr']);
+
+		$spawn->wait();
 
 		return $spawn->getExitCode();
 	}
 
 	/**
-	 * Pipes input from the stream to the callback
-	 * @param InputStream               $in
-	 * @param OutputStream|callable     $out
+	 * Reads the data from the source into the sink
+	 * @param   InputStream                 $source
+	 * @param   OutputStream|callback       $sink
 	 */
-	static private function pipeStream($in, $out) {
+	private static function read(InputStream $source, $sink) {
 		do {
 
-			//fetch stderr data
-			$buffer = $in->read(1024);
+			$data = $source->read(4096);
 
-			//write to the stream or call the function
-			if (!empty($buffer)) {
-				if ($out instanceof OutputStream) {
-					$out->write($buffer);
+			if (!empty($data)) {
+				if (is_callable($sink)) {
+					call_user_func($sink, $data);
 				} else {
-					call_user_func($out, $buffer);
+					$sink->write($data);
 				}
 			}
 
-		}while (!$in->end()) ;
+		} while (!$source->end());
 	}
 
 	/**
@@ -221,9 +215,9 @@ class Process {
 		}
 
 		$options = array(
-			'suppress_errors'   => false,
-			'binary_pipes'      => false,
-			'bypass_shell'      => true,
+			'suppress_errors'   => true,
+			'binary_pipes'      => true,
+			'bypass_shell'      => false,
 		);
 
 		// --- setup process pipes ---
@@ -245,6 +239,8 @@ class Process {
 				self::PIPE_STDOUT => tmpfile(),
 				self::PIPE_STDERR => array('pipe', 'w'),
 			);
+
+			//$commandline = 'cmd /V:ON /E:ON /C "('.$commandline.')';
 
 		} else {
 
@@ -279,6 +275,9 @@ class Process {
 		 */
 		if (OS::isWin()) {
 			$this->pipes[self::PIPE_STDOUT] = $spec[self::PIPE_STDOUT];
+		} else {
+//			$this->getOutputStream()->setBlocking(false);
+//			$this->getErrorStream()->setBlocking(false);
 		}
 
 	}
