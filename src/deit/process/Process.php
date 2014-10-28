@@ -240,6 +240,8 @@ class Process {
 				self::PIPE_STDERR => array('pipe', 'w'),
 			);
 
+			$command = 'cmd /C "'.$command.'"';
+
 		} else {
 
 			if ($pty) {
