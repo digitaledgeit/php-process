@@ -2,13 +2,10 @@
 
 namespace deit\process;
 use deit\platform\System as OS;
-use deit\stream\StreamUtil;
-use deit\stream\Closeable;
 use deit\stream\InputStream;
 use deit\stream\OutputStream;
 use deit\stream\PhpInputStream;
 use deit\stream\PhpOutputStream;
-use deit\stream\NullInputStream;
 use deit\stream\NullOutputStream;
 use deit\stream\RewindBeforeReadInputStream;
 use deit\stream\StreamWatcher;
@@ -97,38 +94,45 @@ class Process {
 
 		}
 
+		//TODO: don't use stream watcher on Windows
 		//TODO: allow the user to specify a timeout option to stop the process after X amount of time
 
-		$watcher = new StreamWatcher();
-		$watcher
-			->register($spawn->getOutputStream(), StreamWatcher::OP_READ, self::PIPE_STDOUT)
-			->register($spawn->getErrorStream(), StreamWatcher::OP_READ, self::PIPE_STDERR)
-		;
+		if (OS::isWin()) {
 
-		do {
+			//note: required for Windows
+			self::read($spawn->getOutputStream(), $options['stdout']);
+			self::read($spawn->getErrorStream(), $options['stderr']);
 
-			$changed = $watcher->watch(0.1);
+		} else {
 
-			foreach ($changed as $status) {
-				$stream = $status->getStream();
+			$watcher = new StreamWatcher();
+			$watcher
+				->register($spawn->getOutputStream(), StreamWatcher::OP_READ, self::PIPE_STDOUT)
+				->register($spawn->getErrorStream(), StreamWatcher::OP_READ, self::PIPE_STDERR)
+			;
 
-				//read stdout stream
-				if ($status->getContext() === self::PIPE_STDOUT) {
-					self::read($stream, $options['stdout']);
+			do {
+
+				$changed = $watcher->watch(0.1);
+
+				foreach ($changed as $status) {
+					$stream = $status->getStream();
+
+					//read stdout stream
+					if ($status->getContext() === self::PIPE_STDOUT) {
+						self::read($stream, $options['stdout']);
+					}
+
+					//read stderr stream
+					if ($status->getContext() === self::PIPE_STDERR) {
+						self::read($stream, $options['stderr']);
+					}
+
 				}
 
-				//read stderr stream
-				if ($status->getContext() === self::PIPE_STDERR) {
-					self::read($stream, $options['stderr']);
-				}
+			} while ($spawn->isRunning() || !$spawn->getOutputStream()->end() || !$spawn->getErrorStream()->end());
 
-			}
-
-		} while ($spawn->isRunning() || !$spawn->getOutputStream()->end() || !$spawn->getErrorStream()->end());
-
-		//note: required for Windows
-		self::read($spawn->getOutputStream(), $options['stdout']);
-		self::read($spawn->getErrorStream(), $options['stderr']);
+		}
 
 		$spawn->wait();
 
@@ -236,7 +240,7 @@ class Process {
 
 			$spec = array(
 				self::PIPE_STDIN  => array('pipe', 'r'),
-				self::PIPE_STDOUT => tmpfile(),
+				self::PIPE_STDOUT => tmpfile(), //Use of stream_select() on file descriptors returned by proc_open() will fail and return FALSE under Windows.
 				self::PIPE_STDERR => array('pipe', 'w'),
 			);
 
